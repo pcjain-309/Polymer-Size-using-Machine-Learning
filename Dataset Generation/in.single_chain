@@ -1,0 +1,70 @@
+# 
+#
+# brush of fene-chains 
+# ./xmovie -scale dump.brush
+# ./lmp_mac2 < in.brush &
+# In file name zhi denotes the separation distance which is to be changed to change file name
+
+# brush of fene-chains 
+#for i in {1..300}; do lmp -in in.single_chain ; cc -O3 Rg2_lammps.c -lm; ./a.out;python3 handle.py;gfortran chain.f -o chain; ./chain<def.chain>data.test; 
+
+units           lj
+atom_style      bond
+
+# periodic box in x,y, fixed in z
+boundary        p p p
+
+
+# input data
+read_data       data.test  # change data file name
+special_bonds   fene
+
+# start beads are tethered
+group           chain type 1
+
+# create velocities with <v>=0
+velocity        all create 1.0 1045
+velocity        all zero linear
+
+
+# Kremer-Grest: LJ + FENE
+pair_style      soft 1.0
+pair_coeff      * * 10.0 1.0
+bond_style      fene 
+bond_coeff      * 30.0 1.5 1.0 1.0
+
+neighbor        0.3 bin
+neigh_modify    every 20 delay 0 check no
+
+
+# Langevin dynamics 
+fix             1 chain langevin 1.0 1.0 1.0 3340
+fix             2 chain nve
+
+
+# ensure sum_i p_i = 0
+fix             3 chain momentum 1 linear 1 1 1
+
+
+#equilibration
+timestep       0.01
+thermo         1000
+run            4000000
+
+# output
+thermo_style    custom step temp epair emol etotal press
+
+#LJ-12/6
+pair_style      lj/cut 2.5
+pair_coeff      * * 1.0 1.0 2.5 #change here 1.12246= open or 2.5= collasped
+
+# production
+dump            id all atom 10000 dump.test
+dump            myDump all custom 10000 test.*.txt id xu yu zu vx vy vz
+dump_modify     myDump sort id
+log             log.test
+timestep        0.005
+thermo          1000
+run             4000000
+
+
